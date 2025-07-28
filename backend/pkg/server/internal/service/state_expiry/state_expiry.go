@@ -207,7 +207,7 @@ func (s *StateExpiry) process(ctx context.Context) error {
 			return err
 		}
 
-		log.Info("Successfully processed network", "network", network.Name)
+		log.Info("Successfully processed state expiry info")
 	}
 
 	return nil
