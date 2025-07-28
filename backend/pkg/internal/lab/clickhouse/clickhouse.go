@@ -156,7 +156,7 @@ func (c *client) Start(ctx context.Context) error {
 	// Note: tls_skip_verify might need to be handled differently with this driver if needed.
 	// Check mailru/go-clickhouse/v2 docs for DSN options.
 	dsnParams := url.Values{}
-	dsnParams.Add("read_timeout", "30s")  // Add 's' unit
+	dsnParams.Add("read_timeout", "200s") // Add 's' unit
 	dsnParams.Add("write_timeout", "30s") // Add 's' unit
 
 	if c.config.InsecureSkipVerify {
@@ -225,7 +225,7 @@ func (c *client) Start(ctx context.Context) error {
 func (c *client) Query(ctx context.Context, query string, args ...interface{}) ([]map[string]interface{}, error) {
 	startTime := time.Now()
 
-	var status = "success"
+	status := "success"
 
 	defer func() {
 		// Record metrics
@@ -305,7 +305,7 @@ func (c *client) Query(ctx context.Context, query string, args ...interface{}) (
 func (c *client) QueryRow(ctx context.Context, query string, args ...interface{}) (map[string]interface{}, error) {
 	startTime := time.Now()
 
-	var status = "success"
+	status := "success"
 
 	defer func() {
 		// Record metrics
@@ -335,7 +335,7 @@ func (c *client) QueryRow(ctx context.Context, query string, args ...interface{}
 func (c *client) Exec(ctx context.Context, query string, args ...interface{}) error {
 	startTime := time.Now()
 
-	var status = "success"
+	status := "success"
 
 	defer func() {
 		c.queriesTotal.WithLabelValues("exec", status).Inc()
