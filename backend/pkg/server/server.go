@@ -24,6 +24,7 @@ import (
 	beacon_chain_timings "github.com/ethpandaops/lab/backend/pkg/server/internal/service/beacon_chain_timings"
 	beacon_slots "github.com/ethpandaops/lab/backend/pkg/server/internal/service/beacon_slots"
 	lab "github.com/ethpandaops/lab/backend/pkg/server/internal/service/lab"
+	state_expiry "github.com/ethpandaops/lab/backend/pkg/server/internal/service/state_expiry"
 	xatu_public_contributors "github.com/ethpandaops/lab/backend/pkg/server/internal/service/xatu_public_contributors"
 	"github.com/sirupsen/logrus"
 )
@@ -147,12 +148,20 @@ func (s *Service) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to get lab service")
 	}
 
+	seService, ok := s.getService(state_expiry.StateExpiryServiceName).(*state_expiry.StateExpiry)
+	if !ok {
+		s.log.Error("Failed to get state expiry service")
+
+		return fmt.Errorf("failed to get state expiry service")
+	}
+
 	// Instantiate gRPC handlers
 	grpcServices := []grpc.Service{
 		grpc.NewLab(s.log, labService),
 		grpc.NewBeaconChainTimings(s.log, bctService),
 		grpc.NewXatuPublicContributors(s.log, xpcService),
 		grpc.NewBeaconSlotsHandler(s.log, bsService),
+		grpc.NewStateExpiry(s.log, seService),
 	}
 
 	// Create gRPC server
@@ -247,11 +256,25 @@ func (s *Service) initializeServices(ctx context.Context) error { // ctx is alre
 		return fmt.Errorf("failed to initialize lab service: %w", err)
 	}
 
+	stateExpiryService, err := state_expiry.New(
+		s.log,
+		s.config.Modules["state_expiry"].StateExpiry,
+		s.ethereumClient,
+		s.xatuClient,
+		s.storageClient,
+		s.cacheClient,
+		s.lockerClient,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to initialize state expiry service: %w", err)
+	}
+
 	s.services = []service.Service{
 		labService,
 		bct,
 		xpc,
 		beaconSlotsService,
+		stateExpiryService,
 	}
 
 	return nil
@@ -312,16 +335,21 @@ func (s *Service) initializeDependencies(ctx context.Context) error {
 	lockerClient := locker.New(s.log, cacheClient, s.metrics)
 
 	// Initialize geolocation client
-	s.log.Info("Initializing geolocation client")
+	var geolocationClient *geolocation.Client
+	if !*s.config.Geolocation.Enabled {
+		s.log.Info("Geolocation client is disabled, skipping initialization")
+	} else {
+		s.log.Info("Initializing geolocation client")
 
-	geolocationClient, err := geolocation.New(s.log, s.config.Geolocation, s.metrics)
-	if err != nil {
-		return fmt.Errorf("failed to initialize geolocation client: %w", err)
-	}
+		geolocationClient, err := geolocation.New(s.log, s.config.Geolocation, s.metrics)
+		if err != nil {
+			return fmt.Errorf("failed to initialize geolocation client: %w", err)
+		}
 
-	// Start the geolocation client
-	if err := geolocationClient.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start geolocation client: %w", err)
+		// Start the geolocation client
+		if err := geolocationClient.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start geolocation client: %w", err)
+		}
 	}
 
 	s.xatuClient = xatuClient

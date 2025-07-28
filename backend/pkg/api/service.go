@@ -306,6 +306,9 @@ func (s *Service) registerLegacyHandlers(router *mux.Router) {
 	// Xatu Countries Window - OK
 	router.HandleFunc("/xatu_public_contributors/countries/{network}/{window_file}.json", s.handleXatuCountriesWindow).Methods("GET")
 
+	// State Expiry - OK
+	router.HandleFunc("/state_expiry/{network}.json", s.handleStateExpiry).Methods("GET")
+
 	// Config file
 	router.HandleFunc("/config.json", s.handleFrontendConfig).Methods("GET")
 }
@@ -477,6 +480,22 @@ func (s *Service) handleXatuUsersWindow(w http.ResponseWriter, r *http.Request) 
 		"Cache-Control": "max-age=605, s-maxage=605, public",
 	}); err != nil {
 		s.log.WithError(err).WithField("key", key).Error("Failed to handle Xatu users window")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+
+		return
+	}
+}
+
+func (s *Service) handleStateExpiry(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	network := vars["network"]
+
+	key := "state_expiry/" + network + "/state_expiry.json"
+	if err := s.handleS3Passthrough(w, r, key, map[string]string{
+		"Content-Type":  "application/json",
+		"Cache-Control": "max-age=605, s-maxage=605, public",
+	}); err != nil {
+		s.log.WithError(err).WithField("key", key).Error("Failed to handle state expiry")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 
 		return
