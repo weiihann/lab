@@ -7,7 +7,10 @@
 package state_expiry
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -15,12 +18,15 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-const ()
+const (
+	StateExpiryService_GetStateExpiryInfo_FullMethodName = "/state_expiry.StateExpiryService/GetStateExpiryInfo"
+)
 
 // StateExpiryServiceClient is the client API for StateExpiryService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StateExpiryServiceClient interface {
+	GetStateExpiryInfo(ctx context.Context, in *GetStateExpiryInfoRequest, opts ...grpc.CallOption) (*GetStateExpiryInfoResponse, error)
 }
 
 type stateExpiryServiceClient struct {
@@ -31,10 +37,20 @@ func NewStateExpiryServiceClient(cc grpc.ClientConnInterface) StateExpiryService
 	return &stateExpiryServiceClient{cc}
 }
 
+func (c *stateExpiryServiceClient) GetStateExpiryInfo(ctx context.Context, in *GetStateExpiryInfoRequest, opts ...grpc.CallOption) (*GetStateExpiryInfoResponse, error) {
+	out := new(GetStateExpiryInfoResponse)
+	err := c.cc.Invoke(ctx, StateExpiryService_GetStateExpiryInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StateExpiryServiceServer is the server API for StateExpiryService service.
 // All implementations must embed UnimplementedStateExpiryServiceServer
 // for forward compatibility
 type StateExpiryServiceServer interface {
+	GetStateExpiryInfo(context.Context, *GetStateExpiryInfoRequest) (*GetStateExpiryInfoResponse, error)
 	mustEmbedUnimplementedStateExpiryServiceServer()
 }
 
@@ -42,6 +58,9 @@ type StateExpiryServiceServer interface {
 type UnimplementedStateExpiryServiceServer struct {
 }
 
+func (UnimplementedStateExpiryServiceServer) GetStateExpiryInfo(context.Context, *GetStateExpiryInfoRequest) (*GetStateExpiryInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStateExpiryInfo not implemented")
+}
 func (UnimplementedStateExpiryServiceServer) mustEmbedUnimplementedStateExpiryServiceServer() {}
 
 // UnsafeStateExpiryServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -55,13 +74,36 @@ func RegisterStateExpiryServiceServer(s grpc.ServiceRegistrar, srv StateExpirySe
 	s.RegisterService(&StateExpiryService_ServiceDesc, srv)
 }
 
+func _StateExpiryService_GetStateExpiryInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStateExpiryInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StateExpiryServiceServer).GetStateExpiryInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StateExpiryService_GetStateExpiryInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StateExpiryServiceServer).GetStateExpiryInfo(ctx, req.(*GetStateExpiryInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StateExpiryService_ServiceDesc is the grpc.ServiceDesc for StateExpiryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var StateExpiryService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "state_expiry.StateExpiryService",
 	HandlerType: (*StateExpiryServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "backend/pkg/server/proto/state_expiry/state_expiry.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetStateExpiryInfo",
+			Handler:    _StateExpiryService_GetStateExpiryInfo_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "backend/pkg/server/proto/state_expiry/state_expiry.proto",
 }

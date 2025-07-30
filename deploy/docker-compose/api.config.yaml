@@ -16,11 +16,13 @@ srvClient:
   address: "${SRV_ADDRESS}"
 
 # Cache configuration
+# cache:
+#   type: "redis"
+#   config:
+#     url: "${REDIS_URL}"
+#     defaultTTL: 60
 cache:
-  type: "redis"
-  config:
-    url: "${REDIS_URL}"
-    defaultTTL: 60
+  type: "memory"
 
 # S3 storage configuration
 storage:
