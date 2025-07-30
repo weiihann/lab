@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package state_expiry;
 
-option go_package = "github.com/ethpandaops/lab/backend/pkg/server/internal/service/state_expiry";
+option go_package = "github.com/ethpandaops/lab/backend/pkg/server/proto/state_expiry";
 
 service StateExpiryService {
-
+  rpc GetStateExpiryInfo (GetStateExpiryInfoRequest) returns (GetStateExpiryInfoResponse);
 }
 
 // StateExpiryInfo aggregates all state expiry related information
@@ -76,4 +76,14 @@ message ContractStorageExpiredSlots {
 
   // Number of expired slots
   int64 expired_slots = 2;
+}
+
+// Request for GetStateExpiryInfo
+message GetStateExpiryInfoRequest {
+  string network = 1;
+}
+
+// Response for GetStateExpiryInfo
+message GetStateExpiryInfoResponse {
+  StateExpiryInfo state_expiry_info = 1;
 }
