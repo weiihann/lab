@@ -28,6 +28,7 @@ import BlockProductionSlotPage from '@/pages/beacon/block-production/slot.tsx';
 import ApplicationProvider from '@/providers/application';
 import fetchBootstrap, { Bootstrap } from '@/bootstrap';
 import { createLabApiClient, LabApiClient, Config } from '@/api/client.ts';
+import StateExpiryPage from '@/pages/state-expiry/index.tsx';
 
 function App() {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
@@ -144,6 +145,7 @@ function App() {
               <Route path="block-production/live" element={<BlockProductionLivePage />} />
               <Route path="block-production/:slot" element={<BlockProductionSlotPage />} />
             </Route>
+            <Route path="state-expiry" element={<StateExpiryPage />} />
           </Route>
         </Routes>
       </ModalProvider>

@@ -38,6 +38,15 @@ const experiments: ExperimentCard[] = [
       { title: 'Block Production Flow', href: '/beacon/block-production/live' },
     ],
   },
+  {
+    id: 'state-expiry',
+    title: 'State Expiry',
+    subtitle: 'State expiry analysis',
+    description: 'Explore the current state of the Ethereum network and how much state is expired.',
+    logo: '/ethereum.png',
+    href: '/state-expiry',
+    color: 'from-primary/20 via-accent/20 to-error/20',
+  },
 ];
 
 function Experiments(): React.ReactElement {

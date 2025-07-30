@@ -1,4 +1,5 @@
 import { createLabApiClient, LabApiClient } from '@/api/client.ts';
+import fetchBootstrap from '@/bootstrap';
 
 let client: LabApiClient | null = null;
 
@@ -13,14 +14,11 @@ export async function getLabApiClient(): Promise<LabApiClient> {
   }
 
   try {
-    // Dynamically import the config to avoid circular dependencies
-    const { getDataUrl } = await import('../config');
+    // Get the backend URL from bootstrap
+    const bootstrap = await fetchBootstrap();
+    const baseUrl = bootstrap.backend.url;
 
-    // The backend URL is part of the data URL without the trailing path
-    // We can extract the base URL from the data URL of an empty path
-    const baseUrl = getDataUrl('').replace(/\/$/, '');
-
-    // Create the client using the URL from config
+    // Create the client using the URL from bootstrap
     client = createLabApiClient(baseUrl);
 
     return client;

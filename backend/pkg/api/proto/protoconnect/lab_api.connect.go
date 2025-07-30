@@ -40,6 +40,9 @@ const (
 	LabAPIGetSlotDataProcedure = "/labapi.LabAPI/GetSlotData"
 	// LabAPIGetConfigProcedure is the fully-qualified name of the LabAPI's GetConfig RPC.
 	LabAPIGetConfigProcedure = "/labapi.LabAPI/GetConfig"
+	// LabAPIGetStateExpiryInfoProcedure is the fully-qualified name of the LabAPI's GetStateExpiryInfo
+	// RPC.
+	LabAPIGetStateExpiryInfoProcedure = "/labapi.LabAPI/GetStateExpiryInfo"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -48,6 +51,7 @@ var (
 	labAPIGetRecentLocallyBuiltBlocksMethodDescriptor = labAPIServiceDescriptor.Methods().ByName("GetRecentLocallyBuiltBlocks")
 	labAPIGetSlotDataMethodDescriptor                 = labAPIServiceDescriptor.Methods().ByName("GetSlotData")
 	labAPIGetConfigMethodDescriptor                   = labAPIServiceDescriptor.Methods().ByName("GetConfig")
+	labAPIGetStateExpiryInfoMethodDescriptor          = labAPIServiceDescriptor.Methods().ByName("GetStateExpiryInfo")
 )
 
 // LabAPIClient is a client for the labapi.LabAPI service.
@@ -55,6 +59,7 @@ type LabAPIClient interface {
 	GetRecentLocallyBuiltBlocks(context.Context, *connect.Request[proto.GetRecentLocallyBuiltBlocksRequest]) (*connect.Response[proto.GetRecentLocallyBuiltBlocksResponse], error)
 	GetSlotData(context.Context, *connect.Request[proto.GetSlotDataRequest]) (*connect.Response[proto.GetSlotDataResponse], error)
 	GetConfig(context.Context, *connect.Request[proto.GetConfigRequest]) (*connect.Response[proto.GetConfigResponse], error)
+	GetStateExpiryInfo(context.Context, *connect.Request[proto.GetStateExpiryInfoRequest]) (*connect.Response[proto.GetStateExpiryInfoResponse], error)
 }
 
 // NewLabAPIClient constructs a client for the labapi.LabAPI service. By default, it uses the
@@ -88,6 +93,13 @@ func NewLabAPIClient(httpClient connect.HTTPClient, baseURL string, opts ...conn
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getStateExpiryInfo: connect.NewClient[proto.GetStateExpiryInfoRequest, proto.GetStateExpiryInfoResponse](
+			httpClient,
+			baseURL+LabAPIGetStateExpiryInfoProcedure,
+			connect.WithSchema(labAPIGetStateExpiryInfoMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -96,6 +108,7 @@ type labAPIClient struct {
 	getRecentLocallyBuiltBlocks *connect.Client[proto.GetRecentLocallyBuiltBlocksRequest, proto.GetRecentLocallyBuiltBlocksResponse]
 	getSlotData                 *connect.Client[proto.GetSlotDataRequest, proto.GetSlotDataResponse]
 	getConfig                   *connect.Client[proto.GetConfigRequest, proto.GetConfigResponse]
+	getStateExpiryInfo          *connect.Client[proto.GetStateExpiryInfoRequest, proto.GetStateExpiryInfoResponse]
 }
 
 // GetRecentLocallyBuiltBlocks calls labapi.LabAPI.GetRecentLocallyBuiltBlocks.
@@ -113,11 +126,17 @@ func (c *labAPIClient) GetConfig(ctx context.Context, req *connect.Request[proto
 	return c.getConfig.CallUnary(ctx, req)
 }
 
+// GetStateExpiryInfo calls labapi.LabAPI.GetStateExpiryInfo.
+func (c *labAPIClient) GetStateExpiryInfo(ctx context.Context, req *connect.Request[proto.GetStateExpiryInfoRequest]) (*connect.Response[proto.GetStateExpiryInfoResponse], error) {
+	return c.getStateExpiryInfo.CallUnary(ctx, req)
+}
+
 // LabAPIHandler is an implementation of the labapi.LabAPI service.
 type LabAPIHandler interface {
 	GetRecentLocallyBuiltBlocks(context.Context, *connect.Request[proto.GetRecentLocallyBuiltBlocksRequest]) (*connect.Response[proto.GetRecentLocallyBuiltBlocksResponse], error)
 	GetSlotData(context.Context, *connect.Request[proto.GetSlotDataRequest]) (*connect.Response[proto.GetSlotDataResponse], error)
 	GetConfig(context.Context, *connect.Request[proto.GetConfigRequest]) (*connect.Response[proto.GetConfigResponse], error)
+	GetStateExpiryInfo(context.Context, *connect.Request[proto.GetStateExpiryInfoRequest]) (*connect.Response[proto.GetStateExpiryInfoResponse], error)
 }
 
 // NewLabAPIHandler builds an HTTP handler from the service implementation. It returns the path on
@@ -147,6 +166,13 @@ func NewLabAPIHandler(svc LabAPIHandler, opts ...connect.HandlerOption) (string,
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	labAPIGetStateExpiryInfoHandler := connect.NewUnaryHandler(
+		LabAPIGetStateExpiryInfoProcedure,
+		svc.GetStateExpiryInfo,
+		connect.WithSchema(labAPIGetStateExpiryInfoMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/labapi.LabAPI/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LabAPIGetRecentLocallyBuiltBlocksProcedure:
@@ -155,6 +181,8 @@ func NewLabAPIHandler(svc LabAPIHandler, opts ...connect.HandlerOption) (string,
 			labAPIGetSlotDataHandler.ServeHTTP(w, r)
 		case LabAPIGetConfigProcedure:
 			labAPIGetConfigHandler.ServeHTTP(w, r)
+		case LabAPIGetStateExpiryInfoProcedure:
+			labAPIGetStateExpiryInfoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -174,4 +202,8 @@ func (UnimplementedLabAPIHandler) GetSlotData(context.Context, *connect.Request[
 
 func (UnimplementedLabAPIHandler) GetConfig(context.Context, *connect.Request[proto.GetConfigRequest]) (*connect.Response[proto.GetConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("labapi.LabAPI.GetConfig is not implemented"))
+}
+
+func (UnimplementedLabAPIHandler) GetStateExpiryInfo(context.Context, *connect.Request[proto.GetStateExpiryInfoRequest]) (*connect.Response[proto.GetStateExpiryInfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("labapi.LabAPI.GetStateExpiryInfo is not implemented"))
 }

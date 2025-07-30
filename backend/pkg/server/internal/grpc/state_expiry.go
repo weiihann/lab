@@ -10,8 +10,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+const StateExpiryHandlerName = "grpc/state_expiry"
+
 type StateExpiry struct {
 	pb.UnimplementedStateExpiryServiceServer
+
 	log     logrus.FieldLogger
 	service *xpc.StateExpiry
 }
@@ -33,4 +36,16 @@ func (s *StateExpiry) Start(ctx context.Context, grpcServer *grpc.Server) error 
 	s.log.Info("StateExpiry GRPC service started")
 
 	return nil
+}
+
+// GetStateExpiryInfo implements the GetStateExpiryInfo method of the StateExpiryServiceServer interface.
+func (s *StateExpiry) GetStateExpiryInfo(ctx context.Context, req *pb.GetStateExpiryInfoRequest) (*pb.GetStateExpiryInfoResponse, error) {
+	stateExpiryInfo, err := s.service.ReadStateExpiryInfo(ctx, req.Network)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetStateExpiryInfoResponse{
+		StateExpiryInfo: stateExpiryInfo,
+	}, nil
 }

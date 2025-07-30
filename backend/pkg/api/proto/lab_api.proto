@@ -6,6 +6,7 @@ option go_package = "github.com/ethpandaops/lab/backend/pkg/api/proto";
 
 import "backend/pkg/server/proto/beacon_slots/beacon_slots.proto";
 import "backend/pkg/server/proto/lab/lab.proto";
+import "backend/pkg/server/proto/state_expiry/state_expiry.proto";
 
 service LabAPI {
   rpc GetRecentLocallyBuiltBlocks(GetRecentLocallyBuiltBlocksRequest) returns (GetRecentLocallyBuiltBlocksResponse) {
@@ -15,6 +16,9 @@ service LabAPI {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetStateExpiryInfo(GetStateExpiryInfoRequest) returns (GetStateExpiryInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -42,4 +46,12 @@ message GetConfigRequest {
 
 message GetConfigResponse {
   lab.FrontendConfig config = 1;
+}
+
+message GetStateExpiryInfoRequest {
+  string network = 1;
+}
+
+message GetStateExpiryInfoResponse {
+  state_expiry.StateExpiryInfo data = 1;
 }
