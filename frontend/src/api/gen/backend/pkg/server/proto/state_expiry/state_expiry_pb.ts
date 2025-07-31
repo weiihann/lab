@@ -27,25 +27,39 @@ export class StateExpiryInfo extends Message<StateExpiryInfo> {
   storage?: StorageInfo;
 
   /**
-   * Access patterns over time
+   * Access patterns over block windows for accounts
    *
-   * @generated from field: repeated state_expiry.AccessSeries access_series = 3;
+   * @generated from field: repeated state_expiry.AccessSeries accounts_access_series = 3;
    */
-  accessSeries: AccessSeries[] = [];
+  accountsAccessSeries: AccessSeries[] = [];
+
+  /**
+   * Access patterns over block windows for storage
+   *
+   * @generated from field: repeated state_expiry.AccessSeries storage_access_series = 4;
+   */
+  storageAccessSeries: AccessSeries[] = [];
 
   /**
    * Top contracts by storage slots
    *
-   * @generated from field: repeated state_expiry.ContractStorageTotalSlots top_contracts_by_slots = 4;
+   * @generated from field: repeated state_expiry.ContractStorageTotalSlots top_contracts_by_slots = 5;
    */
   topContractsBySlots: ContractStorageTotalSlots[] = [];
 
   /**
    * Top contracts by expired storage slots
    *
-   * @generated from field: repeated state_expiry.ContractStorageExpiredSlots top_contracts_by_expired_slots = 5;
+   * @generated from field: repeated state_expiry.ContractStorageExpiredSlots top_contracts_by_expired_slots = 6;
    */
   topContractsByExpiredSlots: ContractStorageExpiredSlots[] = [];
+
+  /**
+   * Expiry block
+   *
+   * @generated from field: uint64 expiry_block = 7;
+   */
+  expiryBlock = protoInt64.zero;
 
   constructor(data?: PartialMessage<StateExpiryInfo>) {
     super();
@@ -57,9 +71,11 @@ export class StateExpiryInfo extends Message<StateExpiryInfo> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "accounts", kind: "message", T: AccountsInfo },
     { no: 2, name: "storage", kind: "message", T: StorageInfo },
-    { no: 3, name: "access_series", kind: "message", T: AccessSeries, repeated: true },
-    { no: 4, name: "top_contracts_by_slots", kind: "message", T: ContractStorageTotalSlots, repeated: true },
-    { no: 5, name: "top_contracts_by_expired_slots", kind: "message", T: ContractStorageExpiredSlots, repeated: true },
+    { no: 3, name: "accounts_access_series", kind: "message", T: AccessSeries, repeated: true },
+    { no: 4, name: "storage_access_series", kind: "message", T: AccessSeries, repeated: true },
+    { no: 5, name: "top_contracts_by_slots", kind: "message", T: ContractStorageTotalSlots, repeated: true },
+    { no: 6, name: "top_contracts_by_expired_slots", kind: "message", T: ContractStorageExpiredSlots, repeated: true },
+    { no: 7, name: "expiry_block", kind: "scalar", T: 4 /* ScalarType.UINT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StateExpiryInfo {
@@ -194,7 +210,7 @@ export class StorageInfo extends Message<StorageInfo> {
 }
 
 /**
- * Access patterns for a specific block
+ * Access patterns for a specific block window
  *
  * @generated from message state_expiry.AccessSeries
  */
@@ -202,23 +218,23 @@ export class AccessSeries extends Message<AccessSeries> {
   /**
    * Block number
    *
-   * @generated from field: uint64 block_number = 1;
+   * @generated from field: uint64 block_window_start = 1;
    */
-  blockNumber = protoInt64.zero;
+  blockWindowStart = protoInt64.zero;
 
   /**
-   * Number of read operations
+   * Number of first access operations
    *
-   * @generated from field: int64 read_count = 2;
+   * @generated from field: int64 first_access_count = 2;
    */
-  readCount = protoInt64.zero;
+  firstAccessCount = protoInt64.zero;
 
   /**
-   * Number of write operations
+   * Number of last access operations
    *
-   * @generated from field: int64 write_count = 3;
+   * @generated from field: int64 last_access_count = 3;
    */
-  writeCount = protoInt64.zero;
+  lastAccessCount = protoInt64.zero;
 
   constructor(data?: PartialMessage<AccessSeries>) {
     super();
@@ -228,9 +244,9 @@ export class AccessSeries extends Message<AccessSeries> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "state_expiry.AccessSeries";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "block_number", kind: "scalar", T: 4 /* ScalarType.UINT64 */ },
-    { no: 2, name: "read_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 3, name: "write_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 1, name: "block_window_start", kind: "scalar", T: 4 /* ScalarType.UINT64 */ },
+    { no: 2, name: "first_access_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "last_access_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AccessSeries {

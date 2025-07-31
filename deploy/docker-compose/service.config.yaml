@@ -116,3 +116,4 @@ modules:
       enabled: true
       redis_key_prefix: "lab_state_expiry"
       active_blocks: 2628000
+      window_size: 100000

@@ -798,23 +798,23 @@
     "state_expiryAccessSeries": {
       "type": "object",
       "properties": {
-        "blockNumber": {
+        "blockWindowStart": {
           "type": "string",
           "format": "uint64",
           "title": "Block number"
         },
-        "readCount": {
+        "firstAccessCount": {
           "type": "string",
           "format": "int64",
-          "title": "Number of read operations"
+          "title": "Number of first access operations"
         },
-        "writeCount": {
+        "lastAccessCount": {
           "type": "string",
           "format": "int64",
-          "title": "Number of write operations"
+          "title": "Number of last access operations"
         }
       },
-      "title": "Access patterns for a specific block"
+      "title": "Access patterns for a specific block window"
     },
     "state_expiryAccountsInfo": {
       "type": "object",
@@ -881,13 +881,21 @@
           "$ref": "#/definitions/state_expiryStorageInfo",
           "title": "Storage statistics"
         },
-        "accessSeries": {
+        "accountsAccessSeries": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/state_expiryAccessSeries"
           },
-          "title": "Access patterns over time"
+          "title": "Access patterns over block windows for accounts"
+        },
+        "storageAccessSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/state_expiryAccessSeries"
+          },
+          "title": "Access patterns over block windows for storage"
         },
         "topContractsBySlots": {
           "type": "array",
@@ -904,6 +912,11 @@
             "$ref": "#/definitions/state_expiryContractStorageExpiredSlots"
           },
           "title": "Top contracts by expired storage slots"
+        },
+        "expiryBlock": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Expiry block"
         }
       },
       "title": "StateExpiryInfo aggregates all state expiry related information"

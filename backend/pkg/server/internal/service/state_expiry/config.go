@@ -19,6 +19,9 @@ type Config struct {
 	//   Active range is from block 18372000 to 21000000
 	//   Expiry range is from block 0 to block 18371999
 	ActiveBlocks int64 `yaml:"active_blocks" json:"active_blocks"`
+
+	// Window size for access series
+	WindowSize int64 `yaml:"window_size" json:"window_size"`
 }
 
 func (c *Config) Validate() error {
@@ -32,6 +35,10 @@ func (c *Config) Validate() error {
 
 	if c.ActiveBlocks <= 0 {
 		return fmt.Errorf("active_blocks must be greater than 0, got %d", c.ActiveBlocks)
+	}
+
+	if c.WindowSize <= 0 {
+		return fmt.Errorf("window_size must be greater than 0, got %d", c.WindowSize)
 	}
 
 	return nil

@@ -16,14 +16,20 @@ message StateExpiryInfo {
   // Storage statistics
   StorageInfo storage = 2;
   
-  // Access patterns over time
-  repeated AccessSeries access_series = 3;
+  // Access patterns over block windows for accounts
+  repeated AccessSeries accounts_access_series = 3;
+
+  // Access patterns over block windows for storage
+  repeated AccessSeries storage_access_series = 4;
   
   // Top contracts by storage slots
-  repeated ContractStorageTotalSlots top_contracts_by_slots = 4;
+  repeated ContractStorageTotalSlots top_contracts_by_slots = 5;
   
   // Top contracts by expired storage slots
-  repeated ContractStorageExpiredSlots top_contracts_by_expired_slots = 5;
+  repeated ContractStorageExpiredSlots top_contracts_by_expired_slots = 6;
+
+  // Expiry block
+  uint64 expiry_block = 7;
 }
 
 // Account-related statistics
@@ -50,16 +56,16 @@ message StorageInfo {
   int64 expired_storage_slots = 2;
 }
 
-// Access patterns for a specific block
+// Access patterns for a specific block window
 message AccessSeries {
   // Block number
-  uint64 block_number = 1;
+  uint64 block_window_start = 1;
   
-  // Number of read operations
-  int64 read_count = 2;
+  // Number of first access operations
+  int64 first_access_count = 2;
   
-  // Number of write operations
-  int64 write_count = 3;
+  // Number of last access operations
+  int64 last_access_count = 3;
 }
 
 message ContractStorageTotalSlots {
