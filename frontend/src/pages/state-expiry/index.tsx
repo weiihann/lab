@@ -6,6 +6,7 @@ import { IntegratedContextualHeader } from '../../components/layout/IntegratedCo
 import { getLabApiClient } from '../../api';
 import { GetStateExpiryInfoRequest } from '../../api/gen/backend/pkg/api/proto/lab_api_pb';
 import { StateExpiryInfo } from '../../api/gen/backend/pkg/server/proto/state_expiry/state_expiry_pb';
+import { ChartWithStats, NivoLineChart } from '../../components/charts';
 import { protoInt64 } from '@bufbuild/protobuf';
 
 interface StateExpiryData {
@@ -18,7 +19,42 @@ interface StateExpiryData {
   contractAccountsExpiryPercentage: number;
   eoaAccountsExpiryPercentage: number;
   storageSlotsExpiryPercentage: number;
+  accountsAccessSeries: Array<{ blockWindow: number; firstAccess: number; lastAccess: number }>;
+  storageAccessSeries: Array<{ blockWindow: number; firstAccess: number; lastAccess: number }>;
+  expiryBlock: number;
 }
+
+// Helper function to generate tick values at million intervals from a numeric range
+const generateMillionTickValues = (values: number[]) => {
+  if (values.length === 0) return [];
+
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+
+  const startMillion = Math.floor(minValue / 1000000) * 1000000;
+  const endMillion = Math.ceil(maxValue / 1000000) * 1000000;
+
+  const ticks = [];
+  for (let i = startMillion; i < endMillion; i += 1000000) {
+    if (i >= 0) {
+      // Include zero and positive values
+      ticks.push(i);
+    }
+  }
+
+  return ticks;
+};
+
+// Helper function to get all Y-axis values from access series data
+const getAccessValues = (
+  data: Array<{ blockWindow: number; firstAccess: number; lastAccess: number }>,
+) => {
+  const values: number[] = [];
+  data.forEach(d => {
+    values.push(d.firstAccess, d.lastAccess);
+  });
+  return values;
+};
 
 export default function StateExpiryPage() {
   const [loading, setLoading] = useState(true);
@@ -64,6 +100,21 @@ export default function StateExpiryPage() {
         expiredSlots: Number(contract.expiredSlots),
       }));
 
+    // Transform access series data
+    const accountsAccessSeries = info.accountsAccessSeries.map(entry => ({
+      blockWindow: Number(entry.blockWindowStart),
+      firstAccess: Number(entry.firstAccessCount),
+      lastAccess: Number(entry.lastAccessCount),
+    }));
+
+    const storageAccessSeries = info.storageAccessSeries.map(entry => ({
+      blockWindow: Number(entry.blockWindowStart),
+      firstAccess: Number(entry.firstAccessCount),
+      lastAccess: Number(entry.lastAccessCount),
+    }));
+
+    const expiryBlock = Number(info.expiryBlock);
+
     return {
       totalEOAAccounts,
       totalContractAccounts,
@@ -74,6 +125,9 @@ export default function StateExpiryPage() {
       contractAccountsExpiryPercentage,
       eoaAccountsExpiryPercentage,
       storageSlotsExpiryPercentage,
+      accountsAccessSeries,
+      storageAccessSeries,
+      expiryBlock,
     };
   };
 
@@ -113,7 +167,7 @@ export default function StateExpiryPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto">
       <IntegratedContextualHeader
         title="State Expiry Analysis"
         description="Comprehensive analysis of Ethereum state expiry metrics including account statistics, storage utilization, and access patterns."
@@ -285,6 +339,244 @@ export default function StateExpiryPage() {
                 </div>
               </CardBody>
             </Card>
+          </div>
+        </section>
+
+        {/* Access Patterns Charts */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-sans font-bold text-primary mb-6">Access Patterns</h2>
+          <div className="space-y-8">
+            {/* Accounts Access Series Chart */}
+            <ChartWithStats
+              title="Accounts Access Patterns"
+              description={`First and last access patterns for accounts (showing ${data.accountsAccessSeries.length} data points)`}
+              chart={
+                <NivoLineChart
+                  data={[
+                    {
+                      id: 'First Access',
+                      data: data.accountsAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.firstAccess,
+                      })),
+                    },
+                    {
+                      id: 'Last Access',
+                      data: data.accountsAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.lastAccess,
+                      })),
+                    },
+                  ]}
+                  axisBottom={{
+                    legend: 'Block Window',
+                    legendOffset: 36,
+                    legendPosition: 'middle',
+                    tickValues: generateMillionTickValues(
+                      data.accountsAccessSeries.map(d => d.blockWindow),
+                    ),
+                    format: (value: any) => {
+                      const numValue = Number(value);
+                      return `${(numValue / 1000000).toFixed(0)}M`;
+                    },
+                  }}
+                  axisLeft={{
+                    legend: 'Access Count',
+                    legendOffset: -40,
+                    legendPosition: 'middle',
+                    tickValues: generateMillionTickValues(
+                      getAccessValues(data.accountsAccessSeries),
+                    ),
+                    format: (value: any) => {
+                      const numValue = Number(value);
+                      if (numValue === 0) return '0';
+                      return `${(numValue / 1000000).toFixed(0)}M`;
+                    },
+                  }}
+                  colors={['#0088FE', '#FF6B35']}
+                  pointSize={0}
+                  enableGridX={false}
+                  enableGridY={false}
+                  enableSlices={'x'}
+                  sliceTooltip={({ slice }: any) => {
+                    // Points are in the order they were defined in the data array
+                    const firstAccessPoint = slice.points[0]; // First Access series
+                    const lastAccessPoint = slice.points[1]; // Last Access series
+                    return (
+                      <div className="bg-surface border border-default rounded-lg p-3 shadow-lg">
+                        <div className="text-sm font-mono">
+                          <div className="font-bold mb-2 text-primary">
+                            Block Window: {firstAccessPoint.data.x.toLocaleString()}
+                          </div>
+                          <div className="mb-1" style={{ color: '#FF6B35' }}>
+                            First Access Count: {firstAccessPoint.data.y.toLocaleString()}
+                          </div>
+                          <div style={{ color: '#0088FE' }}>
+                            Last Access Count: {lastAccessPoint.data.y.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                  markers={[
+                    {
+                      axis: 'x',
+                      value: data.expiryBlock,
+                      lineStyle: {
+                        stroke: '#FF0000',
+                        strokeWidth: 2,
+                        strokeDasharray: '5 5',
+                      },
+                    },
+                  ]}
+                />
+              }
+              series={[
+                {
+                  name: 'First Access',
+                  color: '#0088FE',
+                  min: Math.min(...data.accountsAccessSeries.map(p => p.firstAccess)),
+                  avg: Math.round(
+                    data.accountsAccessSeries.reduce((sum, p) => sum + p.firstAccess, 0) /
+                      data.accountsAccessSeries.length,
+                  ),
+                  max: Math.max(...data.accountsAccessSeries.map(p => p.firstAccess)),
+                  last:
+                    data.accountsAccessSeries[data.accountsAccessSeries.length - 1]?.firstAccess ||
+                    0,
+                },
+                {
+                  name: 'Last Access',
+                  color: '#FF6B35',
+                  min: Math.min(...data.accountsAccessSeries.map(p => p.lastAccess)),
+                  avg: Math.round(
+                    data.accountsAccessSeries.reduce((sum, p) => sum + p.lastAccess, 0) /
+                      data.accountsAccessSeries.length,
+                  ),
+                  max: Math.max(...data.accountsAccessSeries.map(p => p.lastAccess)),
+                  last:
+                    data.accountsAccessSeries[data.accountsAccessSeries.length - 1]?.lastAccess ||
+                    0,
+                },
+              ]}
+              height={400}
+              showSeriesTable={false}
+            />
+
+            {/* Storage Access Series Chart */}
+            <ChartWithStats
+              title="Storage Access Patterns"
+              description={`First and last access patterns for storage (showing ${data.storageAccessSeries.length} data points)`}
+              chart={
+                <NivoLineChart
+                  data={[
+                    {
+                      id: 'First Access',
+                      data: data.storageAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.firstAccess,
+                      })),
+                    },
+                    {
+                      id: 'Last Access',
+                      data: data.storageAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.lastAccess,
+                      })),
+                    },
+                  ]}
+                  axisBottom={{
+                    legend: 'Block Window',
+                    legendOffset: 36,
+                    legendPosition: 'middle',
+                    tickValues: generateMillionTickValues(
+                      data.storageAccessSeries.map(d => d.blockWindow),
+                    ),
+                    format: (value: any) => {
+                      const numValue = Number(value);
+                      return `${(numValue / 1000000).toFixed(0)}M`;
+                    },
+                  }}
+                  axisLeft={{
+                    legend: 'Access Count',
+                    legendOffset: -40,
+                    legendPosition: 'middle',
+                    tickValues: generateMillionTickValues(
+                      getAccessValues(data.storageAccessSeries),
+                    ),
+                    format: (value: any) => {
+                      const numValue = Number(value);
+                      if (numValue === 0) return '0';
+                      return `${(numValue / 1000000).toFixed(0)}M`;
+                    },
+                  }}
+                  colors={['#0088FE', '#FF6B35']}
+                  pointSize={0}
+                  enableGridX={false}
+                  enableGridY={false}
+                  enableSlices={'x'}
+                  sliceTooltip={({ slice }: any) => {
+                    // Points are in the order they were defined in the data array
+                    const firstAccessPoint = slice.points[0]; // First Access series
+                    const lastAccessPoint = slice.points[1]; // Last Access series
+                    return (
+                      <div className="bg-surface border border-default rounded-lg p-3 shadow-lg">
+                        <div className="text-sm font-mono">
+                          <div className="font-bold mb-2 text-primary">
+                            Block Window: {firstAccessPoint.data.x.toLocaleString()}
+                          </div>
+                          <div className="mb-1" style={{ color: '#FF6B35' }}>
+                            First Access Count: {firstAccessPoint.data.y.toLocaleString()}
+                          </div>
+                          <div style={{ color: '#0088FE' }}>
+                            Last Access Count: {lastAccessPoint.data.y.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                  markers={[
+                    {
+                      axis: 'x',
+                      value: data.expiryBlock,
+                      lineStyle: {
+                        stroke: '#FF0000',
+                        strokeWidth: 2,
+                        strokeDasharray: '5 5',
+                      },
+                    },
+                  ]}
+                />
+              }
+              series={[
+                {
+                  name: 'First Access',
+                  color: '#0088FE',
+                  min: Math.min(...data.storageAccessSeries.map(p => p.firstAccess)),
+                  avg: Math.round(
+                    data.storageAccessSeries.reduce((sum, p) => sum + p.firstAccess, 0) /
+                      data.storageAccessSeries.length,
+                  ),
+                  max: Math.max(...data.storageAccessSeries.map(p => p.firstAccess)),
+                  last:
+                    data.storageAccessSeries[data.storageAccessSeries.length - 1]?.firstAccess || 0,
+                },
+                {
+                  name: 'Last Access',
+                  color: '#FF6B35',
+                  min: Math.min(...data.storageAccessSeries.map(p => p.lastAccess)),
+                  avg: Math.round(
+                    data.storageAccessSeries.reduce((sum, p) => sum + p.lastAccess, 0) /
+                      data.storageAccessSeries.length,
+                  ),
+                  max: Math.max(...data.storageAccessSeries.map(p => p.lastAccess)),
+                  last:
+                    data.storageAccessSeries[data.storageAccessSeries.length - 1]?.lastAccess || 0,
+                },
+              ]}
+              height={400}
+              showSeriesTable={false}
+            />
           </div>
         </section>
       </div>
