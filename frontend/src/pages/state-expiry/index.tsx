@@ -6,7 +6,6 @@ import { IntegratedContextualHeader } from '../../components/layout/IntegratedCo
 import { getLabApiClient } from '../../api';
 import { GetStateExpiryInfoRequest } from '../../api/gen/backend/pkg/api/proto/lab_api_pb';
 import { StateExpiryInfo } from '../../api/gen/backend/pkg/server/proto/state_expiry/state_expiry_pb';
-import { ChartWithStats, NivoLineChart } from '../../components/charts';
 import { protoInt64 } from '@bufbuild/protobuf';
 
 interface StateExpiryData {
@@ -19,8 +18,6 @@ interface StateExpiryData {
   contractAccountsExpiryPercentage: number;
   eoaAccountsExpiryPercentage: number;
   storageSlotsExpiryPercentage: number;
-  readCountTrend: Array<{ block: number; count: number }>;
-  writeCountTrend: Array<{ block: number; count: number }>;
 }
 
 export default function StateExpiryPage() {
@@ -32,7 +29,6 @@ export default function StateExpiryPage() {
   const transformStateExpiryData = (info: StateExpiryInfo): StateExpiryData => {
     const accounts = info.accounts;
     const storage = info.storage;
-    const accessSeries = info.accessSeries;
 
     // Convert bigint values to numbers for calculations
     const totalAccounts = Number(accounts?.totalAccounts || protoInt64.zero);
@@ -68,18 +64,6 @@ export default function StateExpiryPage() {
         expiredSlots: Number(contract.expiredSlots),
       }));
 
-    // Transform access series data (last 7200 blocks)
-    const last7200Blocks = accessSeries.slice(-7200);
-    const readCountTrend = last7200Blocks.map(entry => ({
-      block: Number(entry.blockNumber),
-      count: Number(entry.readCount),
-    }));
-
-    const writeCountTrend = last7200Blocks.map(entry => ({
-      block: Number(entry.blockNumber),
-      count: Number(entry.writeCount),
-    }));
-
     return {
       totalEOAAccounts,
       totalContractAccounts,
@@ -90,8 +74,6 @@ export default function StateExpiryPage() {
       contractAccountsExpiryPercentage,
       eoaAccountsExpiryPercentage,
       storageSlotsExpiryPercentage,
-      readCountTrend,
-      writeCountTrend,
     };
   };
 
@@ -303,98 +285,6 @@ export default function StateExpiryPage() {
                 </div>
               </CardBody>
             </Card>
-          </div>
-        </section>
-
-        {/* Access Patterns Charts */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-sans font-bold text-primary mb-6">
-            Access Patterns (Last 7200 Blocks)
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Read Count Trend Chart */}
-            <ChartWithStats
-              title="Read Count Trend"
-              description="Number of read operations per block over the last 7200 blocks"
-              chart={
-                <NivoLineChart
-                  data={[
-                    {
-                      id: 'reads',
-                      data: data.readCountTrend.map(point => ({
-                        x: point.block,
-                        y: point.count,
-                      })),
-                    },
-                  ]}
-                  axisBottom={{
-                    legend: 'Block Number',
-                    legendOffset: 36,
-                  }}
-                  axisLeft={{
-                    legend: 'Read Count',
-                    legendOffset: -40,
-                  }}
-                  colors={['#0088FE']}
-                />
-              }
-              series={[
-                {
-                  name: 'Reads',
-                  color: '#0088FE',
-                  min: Math.min(...data.readCountTrend.map(p => p.count)),
-                  avg: Math.round(
-                    data.readCountTrend.reduce((sum, p) => sum + p.count, 0) /
-                      data.readCountTrend.length,
-                  ),
-                  max: Math.max(...data.readCountTrend.map(p => p.count)),
-                  last: data.readCountTrend[data.readCountTrend.length - 1]?.count || 0,
-                },
-              ]}
-              height={400}
-            />
-
-            {/* Write Count Trend Chart */}
-            <ChartWithStats
-              title="Write Count Trend"
-              description="Number of write operations per block over the last 7200 blocks"
-              chart={
-                <NivoLineChart
-                  data={[
-                    {
-                      id: 'writes',
-                      data: data.writeCountTrend.map(point => ({
-                        x: point.block,
-                        y: point.count,
-                      })),
-                    },
-                  ]}
-                  axisBottom={{
-                    legend: 'Block Number',
-                    legendOffset: 36,
-                  }}
-                  axisLeft={{
-                    legend: 'Write Count',
-                    legendOffset: -40,
-                  }}
-                  colors={['#FF6B35']}
-                />
-              }
-              series={[
-                {
-                  name: 'Writes',
-                  color: '#FF6B35',
-                  min: Math.min(...data.writeCountTrend.map(p => p.count)),
-                  avg: Math.round(
-                    data.writeCountTrend.reduce((sum, p) => sum + p.count, 0) /
-                      data.writeCountTrend.length,
-                  ),
-                  max: Math.max(...data.writeCountTrend.map(p => p.count)),
-                  last: data.writeCountTrend[data.writeCountTrend.length - 1]?.count || 0,
-                },
-              ]}
-              height={400}
-            />
           </div>
         </section>
       </div>

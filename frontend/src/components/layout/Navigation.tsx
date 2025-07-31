@@ -36,10 +36,6 @@ export function Navigation({ showLinks = true, className = '' }: NavigationProps
         <BeakerIcon className="w-4 h-4" />
         Experiments
       </Link>
-      <Link to="/state-expiry" className={linkClasses('/state-expiry')}>
-        <ChartBarIcon className="w-4 h-4" />
-        State Expiry
-      </Link>
       <Link to="/about" className={linkClasses('/about')}>
         <InformationCircleIcon className="w-4 h-4" />
         About

@@ -171,10 +171,15 @@ func (s *StateExpiry) process(ctx context.Context) error {
 		}
 
 		// Get the access series
-		startBlock := maxBlock - 7200 // 1 day worth of blocks
-		accessSeries, err := s.getAccessSeries(ctx, network, startBlock, maxBlock)
+		accountsAccessSeries, err := s.getAccountsAccessSeries(ctx, network, s.config.WindowSize)
 		if err != nil {
 			log.WithError(err).Error("Failed to get access series")
+			return err
+		}
+
+		storageAccessSeries, err := s.getStorageAccessSeries(ctx, network, s.config.WindowSize)
+		if err != nil {
+			log.WithError(err).Error("Failed to get storage access series")
 			return err
 		}
 
@@ -196,9 +201,11 @@ func (s *StateExpiry) process(ctx context.Context) error {
 		stateExpiryInfo := &pb.StateExpiryInfo{
 			Accounts:                   accountsInfo,
 			Storage:                    storageInfo,
-			AccessSeries:               accessSeries,
+			AccountsAccessSeries:       accountsAccessSeries,
+			StorageAccessSeries:        storageAccessSeries,
 			TopContractsBySlots:        topContractsBySlots,
 			TopContractsByExpiredSlots: topContractsByExpiredSlots,
+			ExpiryBlock:                uint64(expiryBlock),
 		}
 
 		// Save the state expiry info
@@ -229,18 +236,18 @@ func (s *StateExpiry) getAccountsInfo(ctx context.Context, network *ethereum.Net
 
 			-- Total accounts
 			(SELECT count() 
-			FROM default.accounts_state FINAL
+			FROM default.accounts_last_access FINAL
 			) AS total_accounts,
 		
 			-- Expired accounts
 			(SELECT count() 
-			FROM default.accounts_state FINAL
+			FROM default.accounts_last_access FINAL
 			WHERE last_access_block < ?
 			) AS expired_accounts,
 		
 			-- Expired contracts
 			(SELECT count() 
-			FROM default.accounts_state AS a FINAL
+			FROM default.accounts_last_access AS a FINAL
 			GLOBAL INNER JOIN (
 			SELECT DISTINCT lower(contract_address) AS contract_address
 			FROM default.canonical_execution_contracts FINAL
@@ -309,12 +316,12 @@ func (s *StateExpiry) getStorageInfo(ctx context.Context, network *ethereum.Netw
 		SELECT
 			-- Total storage slots
 			(SELECT count() 
-			FROM default.storage_state FINAL
+			FROM default.storage_last_access FINAL
 			) AS total_storage_slots,
 
 			-- Expired slots
 			(SELECT count() 
-			FROM default.storage_state FINAL
+			FROM default.storage_last_access FINAL
 			WHERE last_access_block < ?
 			) AS expired_storage_slots
 	`
@@ -353,54 +360,38 @@ func (s *StateExpiry) getStorageInfo(ctx context.Context, network *ethereum.Netw
 	}, nil
 }
 
-func (s *StateExpiry) getAccessSeries(ctx context.Context, network *ethereum.Network, startBlock, endBlock int64) ([]*pb.AccessSeries, error) {
+func (s *StateExpiry) getAccountsAccessSeries(ctx context.Context, network *ethereum.Network, windowSize int64) ([]*pb.AccessSeries, error) {
 	log := s.log.WithFields(logrus.Fields{
 		"processor": AccessSeriesProcessorName,
 		"network":   network.Name,
 	})
-	log.Info("Processing access series")
+	log.Info("Processing accounts access series")
 
 	query := `
+		WITH
+			? AS window_size
+		
 		SELECT
-			block_number,
-			countIf(source = 'read')  AS read_count,
-			countIf(source = 'write') AS write_count
+			block_window,
+			sum(first_accessed) AS first_accessed_accounts,
+			sum(last_accessed) AS last_accessed_accounts
 		FROM (
-			-- Nonce & balance reads
-			SELECT block_number, 'read'  AS source
-			FROM default.canonical_execution_nonce_reads FINAL
-			WHERE block_number BETWEEN ? AND ?
+		SELECT
+			intDiv(first_access_block, window_size) * window_size AS block_window,
+			1 AS first_accessed,
+			0 AS last_accessed
+		FROM default.accounts_first_access FINAL
 
-			UNION ALL
-			SELECT block_number, 'read'
-			FROM default.canonical_execution_balance_reads FINAL
-			WHERE block_number BETWEEN ? AND ?
+		UNION ALL
 
-			-- Nonce & balance writes (diffs)
-			UNION ALL
-			SELECT block_number, 'write'
-			FROM default.canonical_execution_nonce_diffs FINAL
-			WHERE block_number BETWEEN ? AND ?
-
-			UNION ALL
-			SELECT block_number, 'write'
-			FROM default.canonical_execution_balance_diffs FINAL
-			WHERE block_number BETWEEN ? AND ?
-
-			-- Storage reads
-			UNION ALL
-			SELECT block_number, 'read'
-			FROM default.canonical_execution_storage_reads FINAL
-			WHERE block_number BETWEEN ? AND ?
-
-			-- Storage writes (diffs)
-			UNION ALL
-			SELECT block_number, 'write'
-			FROM default.canonical_execution_storage_diffs FINAL
-			WHERE block_number BETWEEN ? AND ?
-		) AS events
-		GROUP BY block_number
-		ORDER BY block_number;
+		SELECT
+			intDiv(last_access_block, window_size) * window_size AS block_window,
+			0 AS first_accessed,
+			1 AS last_accessed
+		FROM default.accounts_last_access FINAL
+		)
+		GROUP BY block_window
+		ORDER BY block_window;
 	`
 
 	networkLog := log.WithField("query_network", network.Name)
@@ -414,7 +405,7 @@ func (s *StateExpiry) getAccessSeries(ctx context.Context, network *ethereum.Net
 		networkLog.Errorf("GetClickhouseClientForNetwork returned nil client without error for network %s", network.Name)
 		return nil, fmt.Errorf("nil Clickhouse client for network %s", network.Name)
 	}
-	rows, err := clickhouseClient.Query(ctx, query, startBlock, endBlock, startBlock, endBlock, startBlock, endBlock, startBlock, endBlock, startBlock, endBlock, startBlock, endBlock)
+	rows, err := clickhouseClient.Query(ctx, query, windowSize)
 	if err != nil {
 		networkLog.WithError(err).Error("Failed to execute query")
 		return nil, err
@@ -424,24 +415,103 @@ func (s *StateExpiry) getAccessSeries(ctx context.Context, network *ethereum.Net
 	}
 
 	// Extract the rows
-	accessSeries := make([]*pb.AccessSeries, 0, endBlock-startBlock+1)
+	var accessSeries []*pb.AccessSeries
 	for _, row := range rows {
-		blockNumber, err := strconv.ParseUint(fmt.Sprintf("%v", row["block_number"]), 10, 64)
+		blockWindowStart, err := strconv.ParseUint(fmt.Sprintf("%v", row["block_window"]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse block_number: %w", err)
+			return nil, fmt.Errorf("failed to parse block_window: %w", err)
 		}
-		readCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["read_count"]), 10, 64)
+		firstAccessCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["first_accessed_accounts"]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse read_count: %w", err)
+			return nil, fmt.Errorf("failed to parse first_accessed_accounts: %w", err)
 		}
-		writeCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["write_count"]), 10, 64)
+		lastAccessCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["last_accessed_accounts"]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse write_count: %w", err)
+			return nil, fmt.Errorf("failed to parse last_accessed_accounts: %w", err)
 		}
 		accessSeries = append(accessSeries, &pb.AccessSeries{
-			BlockNumber: blockNumber,
-			ReadCount:   readCount,
-			WriteCount:  writeCount,
+			BlockWindowStart: blockWindowStart,
+			FirstAccessCount: firstAccessCount,
+			LastAccessCount:  lastAccessCount,
+		})
+	}
+
+	return accessSeries, nil
+}
+
+func (s *StateExpiry) getStorageAccessSeries(ctx context.Context, network *ethereum.Network, windowSize int64) ([]*pb.AccessSeries, error) {
+	log := s.log.WithFields(logrus.Fields{
+		"processor": AccessSeriesProcessorName,
+		"network":   network.Name,
+	})
+	log.Info("Processing storage access series")
+
+	query := `
+		WITH
+			? AS window_size
+			
+		SELECT
+			block_window,
+			sum(first_accessed) AS first_accessed_slots,
+			sum(last_accessed) AS last_accessed_slots
+		FROM (
+			SELECT
+				intDiv(first_access_block, window_size) * window_size AS block_window,
+				1 AS first_accessed,
+				0 AS last_accessed
+			FROM default.storage_first_access FINAL
+
+			UNION ALL
+
+			SELECT
+				intDiv(last_access_block, window_size) * window_size AS block_window,
+				0 AS first_accessed,
+				1 AS last_accessed
+			FROM default.storage_last_access FINAL
+		)
+		GROUP BY block_window
+		ORDER BY block_window ASC
+	`
+
+	networkLog := log.WithField("query_network", network.Name)
+	clickhouseClient, err := s.xatuClient.GetClickhouseClientForNetwork(network.Name)
+	if err != nil {
+		networkLog.WithError(err).Error("Failed to get Clickhouse client for network")
+		return nil, err
+	}
+
+	if clickhouseClient == nil {
+		networkLog.Errorf("GetClickhouseClientForNetwork returned nil client without error for network %s", network.Name)
+		return nil, fmt.Errorf("nil Clickhouse client for network %s", network.Name)
+	}
+	rows, err := clickhouseClient.Query(ctx, query, windowSize)
+	if err != nil {
+		networkLog.WithError(err).Error("Failed to execute query")
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("no rows returned for access series query on network %s", network.Name)
+	}
+
+	// Extract the rows
+	var accessSeries []*pb.AccessSeries
+	for _, row := range rows {
+		blockWindowStart, err := strconv.ParseUint(fmt.Sprintf("%v", row["block_window"]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse block_window: %w", err)
+		}
+		firstAccessCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["first_accessed_slots"]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse first_accessed_slots: %w", err)
+		}
+		lastAccessCount, err := strconv.ParseInt(fmt.Sprintf("%v", row["last_accessed_slots"]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse last_accessed_slots: %w", err)
+		}
+		accessSeries = append(accessSeries, &pb.AccessSeries{
+			BlockWindowStart: blockWindowStart,
+			FirstAccessCount: firstAccessCount,
+			LastAccessCount:  lastAccessCount,
 		})
 	}
 
@@ -457,12 +527,12 @@ func (s *StateExpiry) getTopContractsBySlots(ctx context.Context, network *ether
 
 	query := `
 		SELECT
-			address AS contract_address,
-			uniqMerge(total_slots) AS total_slots
-		FROM default.contract_storage_count_agg FINAL
+			address,
+			count(slot_key) AS total_slots
+		FROM default.storage_last_access FINAL
 		GROUP BY address
 		ORDER BY total_slots DESC
-		LIMIT 3;
+		LIMIT 3
 	`
 
 	// TODO(weiihann): Loop through networks and execute the query for each network
@@ -488,9 +558,9 @@ func (s *StateExpiry) getTopContractsBySlots(ctx context.Context, network *ether
 	// Extract the rows
 	topContractsBySlots := make([]*pb.ContractStorageTotalSlots, 0, 3)
 	for _, row := range rows {
-		contractAddress, ok := row["contract_address"].(string)
+		contractAddress, ok := row["address"].(string)
 		if !ok {
-			return nil, fmt.Errorf("contract_address is not of type string for network %s", network.Name)
+			return nil, fmt.Errorf("address is not of type string for network %s", network.Name)
 		}
 		totalSlots, err := strconv.ParseInt(fmt.Sprintf("%v", row["total_slots"]), 10, 64)
 		if err != nil {
@@ -516,7 +586,7 @@ func (s *StateExpiry) getTopContractsByExpiredSlots(ctx context.Context, network
 		SELECT
 			address   AS contract_address,
 			count()   AS expired_slots
-		FROM default.storage_state FINAL
+		FROM default.storage_last_access FINAL
 		WHERE last_access_block < ?
 		GROUP BY address
 		ORDER BY expired_slots DESC
