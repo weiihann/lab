@@ -1,6 +1,7 @@
 // Export chart components
 export * from '@/components/charts/ChartWithStats';
 export * from '@/components/charts/NivoLineChart';
+export * from '@/components/charts/NivoPieChart';
 export * from '@/components/charts/NivoScatterChart';
 export * from '@/components/charts/NivoTreemapChart';
 export * from '@/components/charts/NivoProvider';

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, CardBody } from '../../components/common/Card';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { IntegratedContextualHeader } from '../../components/layout/IntegratedContextualHeader';
 import { getLabApiClient } from '../../api';
 import { GetStateExpiryInfoRequest } from '../../api/gen/backend/pkg/api/proto/lab_api_pb';
 import { StateExpiryInfo } from '../../api/gen/backend/pkg/server/proto/state_expiry/state_expiry_pb';
-import { ChartWithStats, NivoLineChart } from '../../components/charts';
+import { ChartWithStats, NivoLineChart, NivoPieChart } from '../../components/charts';
 import { protoInt64 } from '@bufbuild/protobuf';
 
 interface StateExpiryData {
@@ -21,7 +20,7 @@ interface StateExpiryData {
   storageSlotsExpiryPercentage: number;
   accountsAccessSeries: Array<{ blockWindow: number; firstAccess: number; lastAccess: number }>;
   storageAccessSeries: Array<{ blockWindow: number; firstAccess: number; lastAccess: number }>;
-  expiryBlock: number;
+  expiryBlockWindow: number;
 }
 
 // Helper function to generate tick values at million intervals from a numeric range
@@ -113,7 +112,7 @@ export default function StateExpiryPage() {
       lastAccess: Number(entry.lastAccessCount),
     }));
 
-    const expiryBlock = Number(info.expiryBlock);
+    const expiryBlockWindow = Number(info.expiryBlockWindow);
 
     return {
       totalEOAAccounts,
@@ -127,7 +126,7 @@ export default function StateExpiryPage() {
       storageSlotsExpiryPercentage,
       accountsAccessSeries,
       storageAccessSeries,
-      expiryBlock,
+      expiryBlockWindow,
     };
   };
 
@@ -173,178 +172,213 @@ export default function StateExpiryPage() {
         description="Comprehensive analysis of Ethereum state expiry metrics including account statistics, storage utilization, and access patterns."
       />
 
-      <div className="space-y-8">
-        {/* Account Statistics */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-sans font-bold text-primary mb-6">Account Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Total EOA Accounts */}
-            <Card>
-              <CardBody>
+      <div className="space-y-4">
+        {/* First Row: Donut Chart Center with 6 Cards in 2 Side Columns */}
+        <section className="mb-8">
+          <div className="grid grid-cols-12 gap-6 items-stretch">
+            {/* Left Column: Account Statistics (3 columns) */}
+            <div className="col-span-12 lg:col-span-3 flex flex-col justify-between h-full">
+              {/* Total EOA Accounts */}
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">
                     Total EOA Accounts
                   </h3>
                   <div className="text-4xl font-mono font-bold text-accent">
                     {data.totalEOAAccounts.toLocaleString()}
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
 
-            {/* Total Contract Accounts */}
-            <Card>
-              <CardBody>
+              {/* Total Contract Accounts */}
+              <div className="flex-1 my-4 flex items-center justify-center">
                 <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">
                     Total Contract Accounts
                   </h3>
                   <div className="text-4xl font-mono font-bold text-accent">
                     {data.totalContractAccounts.toLocaleString()}
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
 
-            {/* Total Storage Slots */}
-            <Card>
-              <CardBody>
+              {/* Total Storage Slots */}
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">
                     Total Storage Slots
                   </h3>
                   <div className="text-4xl font-mono font-bold text-accent">
                     {data.totalStorageSlots.toLocaleString()}
                   </div>
                 </div>
-              </CardBody>
-            </Card>
-          </div>
-        </section>
+              </div>
+            </div>
 
-        {/* Contract Rankings */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-sans font-bold text-primary mb-6">Top Contracts</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top 3 Contracts by Storage Slots */}
-            <Card>
-              <CardBody>
-                <h3 className="text-xl font-sans font-bold text-primary mb-4">
-                  Top 3 Contracts by Storage Slots
-                </h3>
-                <div className="space-y-3">
-                  {data.topContractsBySlots.map((contract, index) => (
-                    <div
-                      key={contract.address}
-                      className="flex justify-between items-center p-3 bg-surface/50 rounded-lg"
-                    >
-                      <div>
-                        <div className="text-sm font-mono text-secondary">#{index + 1}</div>
-                        <div
-                          className="text-xs font-mono text-tertiary truncate max-w-[200px]"
-                          title={contract.address}
-                        >
-                          {contract.address}
-                        </div>
-                      </div>
-                      <div className="text-lg font-mono font-bold text-accent">
-                        {contract.slots.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Top 3 Contracts by Expired Storage Slots */}
-            <Card>
-              <CardBody>
-                <h3 className="text-xl font-sans font-bold text-primary mb-4">
-                  Top 3 Contracts by Expired Slots
-                </h3>
-                <div className="space-y-3">
-                  {data.topContractsByExpiredSlots.map((contract, index) => (
-                    <div
-                      key={contract.address}
-                      className="flex justify-between items-center p-3 bg-surface/50 rounded-lg"
-                    >
-                      <div>
-                        <div className="text-sm font-mono text-secondary">#{index + 1}</div>
-                        <div
-                          className="text-xs font-mono text-tertiary truncate max-w-[200px]"
-                          title={contract.address}
-                        >
-                          {contract.address}
-                        </div>
-                      </div>
-                      <div className="text-lg font-mono font-bold text-error">
-                        {contract.expiredSlots.toLocaleString()}
+            {/* Center Column: Overall Expiry Donut Chart (6 columns) */}
+            <div className="col-span-12 lg:col-span-6 flex flex-col h-full">
+              <h3 className="text-3xl font-sans font-bold text-primary mb-6 text-center">
+                Overall Expiry
+              </h3>
+              <div className="flex-1 min-h-[600px] relative">
+                <NivoPieChart
+                  data={[
+                    {
+                      id: 'Expired',
+                      label: 'Expired',
+                      value: data.overallExpiryPercentage,
+                      color: '#FF6B35',
+                    },
+                    {
+                      id: 'Active',
+                      label: 'Active',
+                      value: 100 - data.overallExpiryPercentage,
+                      color: '#0088FE',
+                    },
+                  ]}
+                  innerRadius={0.6}
+                  padAngle={1}
+                  cornerRadius={3}
+                  activeOuterRadiusOffset={12}
+                  colors={['#FF6B35', '#0088FE']}
+                  borderWidth={2}
+                  borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+                  arcLinkLabelsSkipAngle={10}
+                  arcLinkLabelsTextColor="#FFFFFF"
+                  arcLinkLabelsThickness={3}
+                  arcLinkLabelsColor={{ from: 'color' }}
+                  arcLabelsSkipAngle={10}
+                  arcLabelsTextColor="#FFFFFF"
+                  valueFormat=".1f"
+                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                  theme={{
+                    labels: {
+                      text: {
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                      },
+                    },
+                  }}
+                  tooltip={({ datum }: any) => (
+                    <div className="bg-surface border border-default rounded-lg p-3 shadow-lg">
+                      <div className="text-sm font-mono">
+                        <div className="font-bold text-primary">{datum.label}</div>
+                        <div className="text-accent">{datum.value.toFixed(2)}%</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-        </section>
-
-        {/* Expiry Percentages */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-sans font-bold text-primary mb-6">Expiry Percentages</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Overall Expiry Percentage */}
-            <Card>
-              <CardBody>
-                <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">Overall Expiry</h3>
-                  <div className="text-4xl font-mono font-bold text-warning">
-                    {data.overallExpiryPercentage.toFixed(2)}%
+                  )}
+                />
+                {/* Center text overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-5xl font-mono font-bold text-warning">
+                      {data.overallExpiryPercentage.toFixed(2)}%
+                    </div>
+                    <div className="text-lg font-mono text-secondary">Expired</div>
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
+            </div>
 
-            {/* Contract Accounts Expiry */}
-            <Card>
-              <CardBody>
+            {/* Right Column: Expiry Percentages (3 columns) */}
+            <div className="col-span-12 lg:col-span-3 flex flex-col justify-between h-full">
+              {/* EOA Accounts Expiry */}
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">Contract Expiry</h3>
-                  <div className="text-4xl font-mono font-bold text-warning">
-                    {data.contractAccountsExpiryPercentage.toFixed(2)}%
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* EOA Accounts Expiry */}
-            <Card>
-              <CardBody>
-                <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">EOA Expiry</h3>
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">EOA Expiry</h3>
                   <div className="text-4xl font-mono font-bold text-warning">
                     {data.eoaAccountsExpiryPercentage.toFixed(2)}%
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
 
-            {/* Storage Slots Expiry */}
-            <Card>
-              <CardBody>
+              {/* Contract Accounts Expiry */}
+              <div className="flex-1 my-4 flex items-center justify-center">
                 <div className="text-center">
-                  <h3 className="text-lg font-sans font-bold text-primary mb-2">Storage Expiry</h3>
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">Contract Expiry</h3>
+                  <div className="text-4xl font-mono font-bold text-warning">
+                    {data.contractAccountsExpiryPercentage.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Storage Slots Expiry */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <h3 className="text-xl font-sans font-bold text-primary mb-3">Storage Expiry</h3>
                   <div className="text-4xl font-mono font-bold text-warning">
                     {data.storageSlotsExpiryPercentage.toFixed(2)}%
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Second Row: Top Contracts in 2 Columns */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top 3 Contracts by Storage Slots */}
+            <div>
+              <h3 className="text-xl font-sans font-bold text-primary mb-4">
+                Top 3 Contracts by Storage Slots
+              </h3>
+              <div className="space-y-3">
+                {data.topContractsBySlots.map((contract, index) => (
+                  <div
+                    key={contract.address}
+                    className="flex justify-between items-center p-3 bg-surface/50 rounded-lg"
+                  >
+                    <div>
+                      <div className="text-sm font-mono text-secondary">#{index + 1}</div>
+                      <div
+                        className="text-xs font-mono text-tertiary truncate max-w-[300px]"
+                        title={contract.address}
+                      >
+                        {contract.address}
+                      </div>
+                    </div>
+                    <div className="text-lg font-mono font-bold text-accent">
+                      {contract.slots.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top 3 Contracts by Expired Storage Slots */}
+            <div>
+              <h3 className="text-xl font-sans font-bold text-primary mb-4">
+                Top 3 Contracts by Expired Slots
+              </h3>
+              <div className="space-y-3">
+                {data.topContractsByExpiredSlots.map((contract, index) => (
+                  <div
+                    key={contract.address}
+                    className="flex justify-between items-center p-3 bg-surface/50 rounded-lg"
+                  >
+                    <div>
+                      <div className="text-sm font-mono text-secondary">#{index + 1}</div>
+                      <div
+                        className="text-xs font-mono text-tertiary truncate max-w-[300px]"
+                        title={contract.address}
+                      >
+                        {contract.address}
+                      </div>
+                    </div>
+                    <div className="text-lg font-mono font-bold text-error">
+                      {contract.expiredSlots.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
         {/* Access Patterns Charts */}
         <section className="mb-16">
-          <h2 className="text-2xl font-sans font-bold text-primary mb-6">Access Patterns</h2>
+          {/* <h2 className="text-2xl font-sans font-bold text-primary mb-6">Access Patterns</h2> */}
           <div className="space-y-8">
             {/* Accounts Access Series Chart */}
             <ChartWithStats
@@ -354,17 +388,17 @@ export default function StateExpiryPage() {
                 <NivoLineChart
                   data={[
                     {
-                      id: 'First Access',
-                      data: data.accountsAccessSeries.map(point => ({
-                        x: point.blockWindow,
-                        y: point.firstAccess,
-                      })),
-                    },
-                    {
                       id: 'Last Access',
                       data: data.accountsAccessSeries.map(point => ({
                         x: point.blockWindow,
                         y: point.lastAccess,
+                      })),
+                    },
+                    {
+                      id: 'First Access',
+                      data: data.accountsAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.firstAccess,
                       })),
                     },
                   ]}
@@ -421,12 +455,33 @@ export default function StateExpiryPage() {
                   markers={[
                     {
                       axis: 'x',
-                      value: data.expiryBlock,
+                      value: data.expiryBlockWindow,
                       lineStyle: {
-                        stroke: '#FF0000',
+                        stroke: '#FFFFFF',
                         strokeWidth: 2,
                         strokeDasharray: '5 5',
                       },
+                      legend: 'expiry threshold',
+                      legendOrientation: 'vertical',
+                      textStyle: {
+                        fill: '#FFFFFF',
+                        fontSize: 12,
+                      },
+                    },
+                  ]}
+                  legends={[
+                    {
+                      anchor: 'top-left',
+                      direction: 'column',
+                      justify: true,
+                      translateX: 15,
+                      translateY: 0,
+                      itemsSpacing: 2,
+                      itemDirection: 'left-to-right',
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      symbolSize: 12,
+                      symbolShape: 'circle',
                     },
                   ]}
                 />
@@ -471,17 +526,17 @@ export default function StateExpiryPage() {
                 <NivoLineChart
                   data={[
                     {
-                      id: 'First Access',
-                      data: data.storageAccessSeries.map(point => ({
-                        x: point.blockWindow,
-                        y: point.firstAccess,
-                      })),
-                    },
-                    {
                       id: 'Last Access',
                       data: data.storageAccessSeries.map(point => ({
                         x: point.blockWindow,
                         y: point.lastAccess,
+                      })),
+                    },
+                    {
+                      id: 'First Access',
+                      data: data.storageAccessSeries.map(point => ({
+                        x: point.blockWindow,
+                        y: point.firstAccess,
                       })),
                     },
                   ]}
@@ -516,7 +571,6 @@ export default function StateExpiryPage() {
                   enableGridY={false}
                   enableSlices={'x'}
                   sliceTooltip={({ slice }: any) => {
-                    // Points are in the order they were defined in the data array
                     const firstAccessPoint = slice.points[0]; // First Access series
                     const lastAccessPoint = slice.points[1]; // Last Access series
                     return (
@@ -538,12 +592,33 @@ export default function StateExpiryPage() {
                   markers={[
                     {
                       axis: 'x',
-                      value: data.expiryBlock,
+                      value: data.expiryBlockWindow,
                       lineStyle: {
-                        stroke: '#FF0000',
+                        stroke: '#FFFFFF',
                         strokeWidth: 2,
                         strokeDasharray: '5 5',
                       },
+                      legend: 'expiry threshold',
+                      legendOrientation: 'vertical',
+                      textStyle: {
+                        fill: '#FFFFFF',
+                        fontSize: 12,
+                      },
+                    },
+                  ]}
+                  legends={[
+                    {
+                      anchor: 'top-left',
+                      direction: 'column',
+                      justify: true,
+                      translateX: 15,
+                      translateY: 0,
+                      itemsSpacing: 2,
+                      itemDirection: 'left-to-right',
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      symbolSize: 12,
+                      symbolShape: 'circle',
                     },
                   ]}
                 />
