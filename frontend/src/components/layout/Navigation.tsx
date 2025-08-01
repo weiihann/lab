@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
-import { BeakerIcon, HomeIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import {
+  BeakerIcon,
+  HomeIcon,
+  InformationCircleIcon,
+  ChartBarIcon,
+} from '@heroicons/react/24/outline';
 
 interface NavigationProps {
   showLinks?: boolean;

@@ -759,6 +759,14 @@
         }
       }
     },
+    "labapiGetStateExpiryInfoResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/state_expiryStateExpiryInfo"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -786,6 +794,148 @@
           }
         }
       }
+    },
+    "state_expiryAccessSeries": {
+      "type": "object",
+      "properties": {
+        "blockWindowStart": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Block number"
+        },
+        "firstAccessCount": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of first access operations"
+        },
+        "lastAccessCount": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of last access operations"
+        }
+      },
+      "title": "Access patterns for a specific block window"
+    },
+    "state_expiryAccountsInfo": {
+      "type": "object",
+      "properties": {
+        "totalContractAccounts": {
+          "type": "string",
+          "format": "int64",
+          "title": "Total number of contract accounts"
+        },
+        "totalAccounts": {
+          "type": "string",
+          "format": "int64",
+          "title": "Total number of accounts"
+        },
+        "expiredAccounts": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of expired accounts"
+        },
+        "expiredContracts": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of expired contracts"
+        }
+      },
+      "title": "Account-related statistics"
+    },
+    "state_expiryContractStorageExpiredSlots": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string",
+          "title": "Contract address"
+        },
+        "expiredSlots": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of expired slots"
+        }
+      }
+    },
+    "state_expiryContractStorageTotalSlots": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string",
+          "title": "Contract address"
+        },
+        "totalSlots": {
+          "type": "string",
+          "format": "int64",
+          "title": "Total number of slots"
+        }
+      }
+    },
+    "state_expiryStateExpiryInfo": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "$ref": "#/definitions/state_expiryAccountsInfo",
+          "title": "Account statistics"
+        },
+        "storage": {
+          "$ref": "#/definitions/state_expiryStorageInfo",
+          "title": "Storage statistics"
+        },
+        "accountsAccessSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/state_expiryAccessSeries"
+          },
+          "title": "Access patterns over block windows for accounts"
+        },
+        "storageAccessSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/state_expiryAccessSeries"
+          },
+          "title": "Access patterns over block windows for storage"
+        },
+        "topContractsBySlots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/state_expiryContractStorageTotalSlots"
+          },
+          "title": "Top contracts by storage slots"
+        },
+        "topContractsByExpiredSlots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/state_expiryContractStorageExpiredSlots"
+          },
+          "title": "Top contracts by expired storage slots"
+        },
+        "expiryBlockWindow": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Expiry block"
+        }
+      },
+      "title": "StateExpiryInfo aggregates all state expiry related information"
+    },
+    "state_expiryStorageInfo": {
+      "type": "object",
+      "properties": {
+        "totalStorageSlots": {
+          "type": "string",
+          "format": "int64",
+          "title": "Total number of storage slots"
+        },
+        "expiredStorageSlots": {
+          "type": "string",
+          "format": "int64",
+          "title": "Number of expired storage slots"
+        }
+      },
+      "title": "Storage-related statistics"
     }
   }
 }

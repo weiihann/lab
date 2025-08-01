@@ -36,20 +36,22 @@ ethereum:
               nimbus: "25.4.1"
               prysm: "6.0.0"
               teku: "25.4.1"
-    hoodi:
-      name: "hoodi"
-      configURL: "https://raw.githubusercontent.com/eth-clients/hoodi/refs/heads/main/metadata/config.yaml"
-      genesis: "2025-03-17T12:10:00Z"
-      xatu:
-        dsn: "${XATU_CLICKHOUSE_URL}"
-        protocol: "native"
+    # hoodi:
+    #   name: "hoodi"
+    #   configURL: "https://raw.githubusercontent.com/eth-clients/hoodi/refs/heads/main/metadata/config.yaml"
+    #   genesis: "2025-03-17T12:10:00Z"
+    #   xatu:
+    #     dsn: "${XATU_CLICKHOUSE_URL}"
+    #     protocol: "native"
 
 # Cache configuration
+# cache:
+#   type: "redis"
+#   config:
+#     url: "${REDIS_URL}"
+#     defaultTTL: 60
 cache:
-  type: "redis"
-  config:
-    url: "${REDIS_URL}"
-    defaultTTL: 60
+  type: "memory"
 
 geolocation:
   enabled: ${GEOLOCATION_ENABLED}
@@ -59,7 +61,7 @@ geolocation:
 modules:
   beacon_slots:
     beacon_slots:
-      enabled: true
+      enabled: false
       backfill:
         enabled: true
         slots: 1000
@@ -69,7 +71,7 @@ modules:
         slots: 16
   beacon_chain_timings:
     beacon_chain_timings:
-      enabled: true
+      enabled: false
       interval: "1m"
       time_windows:
         - file: "last_1_hour.json"
@@ -90,7 +92,7 @@ modules:
           range: "-720h"
   xatu_public_contributors:
     xatu_public_contributors:
-      enabled: true
+      enabled: false
       redis_key_prefix: "lab_xatu_public_contributors"
       interval: "2m"
       time_windows:
@@ -108,4 +110,10 @@ modules:
           duration: "720h"
           file: "last_30_days.json"
           step: "1h"
-          range: "-720h" 
+          range: "-720h"
+  state_expiry:
+    state_expiry:
+      enabled: true
+      redis_key_prefix: "lab_state_expiry"
+      active_blocks: 2628000
+      window_size: 100000

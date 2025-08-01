@@ -171,6 +171,9 @@ func (b *BeaconSlots) transformSlotDataForStorage(
 
 // lookupGeoCoordinates performs a geo lookup for given city/country.
 func (b *BeaconSlots) lookupGeoCoordinates(city, country string) (*float64, *float64) {
+	if b.geolocationClient == nil {
+		return nil, nil
+	}
 	location, found := b.geolocationClient.LookupCity(geolocation.LookupParams{
 		City:    city,
 		Country: country,

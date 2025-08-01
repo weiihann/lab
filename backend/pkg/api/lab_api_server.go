@@ -12,6 +12,7 @@ import (
 	"github.com/ethpandaops/lab/backend/pkg/internal/lab/storage"
 	beaconslotspb "github.com/ethpandaops/lab/backend/pkg/server/proto/beacon_slots"
 	labpb "github.com/ethpandaops/lab/backend/pkg/server/proto/lab"
+	stateexpirypb "github.com/ethpandaops/lab/backend/pkg/server/proto/state_expiry"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -37,6 +38,7 @@ type LabAPIServerImpl struct {
 	// gRPC clients
 	beaconSlotsClient beaconslotspb.BeaconSlotsClient
 	labClient         labpb.LabServiceClient
+	stateExpiryClient stateexpirypb.StateExpiryServiceClient
 }
 
 func NewLabAPIServer(cacheClient cache.Client, storageClient storage.Client, srvConn *grpc.ClientConn, log logrus.FieldLogger) *LabAPIServerImpl {
@@ -45,6 +47,7 @@ func NewLabAPIServer(cacheClient cache.Client, storageClient storage.Client, srv
 		storage:           storageClient,
 		beaconSlotsClient: beaconslotspb.NewBeaconSlotsClient(srvConn),
 		labClient:         labpb.NewLabServiceClient(srvConn),
+		stateExpiryClient: stateexpirypb.NewStateExpiryServiceClient(srvConn),
 		log:               log,
 	}
 }
@@ -120,6 +123,26 @@ func (s *LabAPIServerImpl) GetConfig(ctx context.Context, req *connect.Request[p
 
 	// Set medium-term caching headers
 	res.Header().Set("Cache-Control", StandardHTTPHeaders["Cache-Control-Medium"])
+
+	return res, nil
+}
+
+// GetStateExpiryInfo retrieves state expiry information for a network
+func (s *LabAPIServerImpl) GetStateExpiryInfo(ctx context.Context, req *connect.Request[proto.GetStateExpiryInfoRequest]) (*connect.Response[proto.GetStateExpiryInfoResponse], error) {
+	s.log.WithField("network", req.Msg.Network).Debug("GetStateExpiryInfo")
+
+	resp, err := s.stateExpiryClient.GetStateExpiryInfo(ctx, &stateexpirypb.GetStateExpiryInfoRequest{
+		Network: req.Msg.Network,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	apiResponse := &proto.GetStateExpiryInfoResponse{
+		Data: resp.StateExpiryInfo,
+	}
+
+	res := connect.NewResponse(apiResponse)
 
 	return res, nil
 }

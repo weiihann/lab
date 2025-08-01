@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package state_expiry;
+
+option go_package = "github.com/ethpandaops/lab/backend/pkg/server/proto/state_expiry";
+
+service StateExpiryService {
+  rpc GetStateExpiryInfo (GetStateExpiryInfoRequest) returns (GetStateExpiryInfoResponse);
+}
+
+// StateExpiryInfo aggregates all state expiry related information
+message StateExpiryInfo {
+  // Account statistics
+  AccountsInfo accounts = 1;
+  
+  // Storage statistics
+  StorageInfo storage = 2;
+  
+  // Access patterns over block windows for accounts
+  repeated AccessSeries accounts_access_series = 3;
+
+  // Access patterns over block windows for storage
+  repeated AccessSeries storage_access_series = 4;
+  
+  // Top contracts by storage slots
+  repeated ContractStorageTotalSlots top_contracts_by_slots = 5;
+  
+  // Top contracts by expired storage slots
+  repeated ContractStorageExpiredSlots top_contracts_by_expired_slots = 6;
+
+  // Expiry block
+  uint64 expiry_block_window = 7;
+}
+
+// Account-related statistics
+message AccountsInfo {
+  // Total number of contract accounts
+  int64 total_contract_accounts = 1;
+  
+  // Total number of accounts
+  int64 total_accounts = 2;
+  
+  // Number of expired accounts
+  int64 expired_accounts = 3;
+  
+  // Number of expired contracts
+  int64 expired_contracts = 4;
+}
+
+// Storage-related statistics
+message StorageInfo {
+  // Total number of storage slots
+  int64 total_storage_slots = 1;
+  
+  // Number of expired storage slots
+  int64 expired_storage_slots = 2;
+}
+
+// Access patterns for a specific block window
+message AccessSeries {
+  // Block number
+  uint64 block_window_start = 1;
+  
+  // Number of first access operations
+  int64 first_access_count = 2;
+  
+  // Number of last access operations
+  int64 last_access_count = 3;
+}
+
+message ContractStorageTotalSlots {
+  // Contract address
+  string contract_address = 1;
+
+  // Total number of slots
+  int64 total_slots = 2;
+}
+
+message ContractStorageExpiredSlots {
+  // Contract address
+  string contract_address = 1;
+
+  // Number of expired slots
+  int64 expired_slots = 2;
+}
+
+// Request for GetStateExpiryInfo
+message GetStateExpiryInfoRequest {
+  string network = 1;
+}
+
+// Response for GetStateExpiryInfo
+message GetStateExpiryInfoResponse {
+  StateExpiryInfo state_expiry_info = 1;
+}
