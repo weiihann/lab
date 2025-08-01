@@ -913,7 +913,7 @@
           },
           "title": "Top contracts by expired storage slots"
         },
-        "expiryBlock": {
+        "expiryBlockWindow": {
           "type": "string",
           "format": "uint64",
           "title": "Expiry block"

@@ -57,9 +57,9 @@ export class StateExpiryInfo extends Message<StateExpiryInfo> {
   /**
    * Expiry block
    *
-   * @generated from field: uint64 expiry_block = 7;
+   * @generated from field: uint64 expiry_block_window = 7;
    */
-  expiryBlock = protoInt64.zero;
+  expiryBlockWindow = protoInt64.zero;
 
   constructor(data?: PartialMessage<StateExpiryInfo>) {
     super();
@@ -75,7 +75,7 @@ export class StateExpiryInfo extends Message<StateExpiryInfo> {
     { no: 4, name: "storage_access_series", kind: "message", T: AccessSeries, repeated: true },
     { no: 5, name: "top_contracts_by_slots", kind: "message", T: ContractStorageTotalSlots, repeated: true },
     { no: 6, name: "top_contracts_by_expired_slots", kind: "message", T: ContractStorageExpiredSlots, repeated: true },
-    { no: 7, name: "expiry_block", kind: "scalar", T: 4 /* ScalarType.UINT64 */ },
+    { no: 7, name: "expiry_block_window", kind: "scalar", T: 4 /* ScalarType.UINT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StateExpiryInfo {

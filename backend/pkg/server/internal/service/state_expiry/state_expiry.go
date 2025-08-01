@@ -197,6 +197,8 @@ func (s *StateExpiry) process(ctx context.Context) error {
 			return err
 		}
 
+		expiryBlockWindow := (expiryBlock / s.config.WindowSize) * s.config.WindowSize
+
 		// Create the state expiry info
 		stateExpiryInfo := &pb.StateExpiryInfo{
 			Accounts:                   accountsInfo,
@@ -205,7 +207,7 @@ func (s *StateExpiry) process(ctx context.Context) error {
 			StorageAccessSeries:        storageAccessSeries,
 			TopContractsBySlots:        topContractsBySlots,
 			TopContractsByExpiredSlots: topContractsByExpiredSlots,
-			ExpiryBlock:                uint64(expiryBlock),
+			ExpiryBlockWindow:          uint64(expiryBlockWindow),
 		}
 
 		// Save the state expiry info

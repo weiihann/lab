@@ -29,7 +29,7 @@ message StateExpiryInfo {
   repeated ContractStorageExpiredSlots top_contracts_by_expired_slots = 6;
 
   // Expiry block
-  uint64 expiry_block = 7;
+  uint64 expiry_block_window = 7;
 }
 
 // Account-related statistics
